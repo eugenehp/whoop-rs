@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+examples/web/dist
+*.ndjson
+poop-tui.log
+.DS_Store

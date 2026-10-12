@@ -1,0 +1,165 @@
+[package]
+name          = "poop"
+version       = "0.0.1"
+edition       = "2021"
+# webbluetooth requires it, so this crate does too — declared rather than
+# discovered halfway through a build.
+rust-version  = "1.94"
+description   = "Rust client for WHOOP 4.0 and WHOOP 5.0/MG straps over BLE using the Web Bluetooth API"
+keywords      = ["ble", "whoop", "hrv", "wearable", "ppg"]
+# Browsing categories is how someone finds this without knowing it exists. `wasm`
+# earns its place from the first release: the library runs in a page.
+categories    = ["science", "hardware-support", "wasm"]
+authors       = ["Eugene Hauptmann"]
+# The SPDX expression rather than `license-file`: crates.io shows a file
+# reference as a non-standard licence, and licence tooling reads the expression.
+license       = "Apache-2.0"
+homepage      = "https://github.com/eugenehp/whoop-rs"
+repository    = "https://github.com/eugenehp/whoop-rs"
+documentation = "https://docs.rs/poop"
+readme        = "README.md"
+
+# ── What ships in the crate ───────────────────────────────────────────────────
+#
+# An allowlist rather than an exclude list. The working tree can contain
+# anything — captures, a vendored APK, a dist directory — and a `publish` that
+# defaults to "everything not named" is one `cp` away from shipping hundreds of
+# megabytes, or something that was never meant to leave the machine. Naming what
+# goes in cannot have that failure mode.
+# Every pattern is anchored with a leading slash. `include` is gitignore-style,
+# so a bare "README.md" matches one at *any* depth — which is how a stray README
+# from an unrelated directory ends up in the tarball.
+include = [
+    "/src/**/*.rs",
+    "/examples/web/*.rs",
+    "/examples/web/*.js",
+    "/examples/web/*.html",
+    "/examples/web/*.sh",
+    "/examples/web/README.md",
+    "/build.rs",
+    "/Info.plist",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/DISCLAIMER.md",
+    "/LICENSE",
+]
+
+# docs.rs builds for a single target and has no Bluetooth adapter; the default
+# feature set is correct there, so this only pins the target to the one the
+# documentation examples are written against.
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+all-features = true
+
+# ── Library target ────────────────────────────────────────────────────────────
+# Produces `libpoop.rlib`. Downstream crates depend on this target; the binaries
+# below are separate. The crate is `poop`; the repository is `whoop-rs`.
+
+[lib]
+name = "poop"
+path = "src/lib.rs"
+
+# ── Binary targets ────────────────────────────────────────────────────────────
+
+# Headless CLI: scan, connect, stream, offload history to NDJSON.
+[[bin]]
+name = "poop"
+path = "src/main.rs"
+
+# Full-screen ratatui TUI — requires the `tui` feature (enabled by default).
+[[bin]]
+name = "tui"
+path = "src/bin/tui.rs"
+required-features = ["tui"]
+
+# Browser interface (examples/web). A `cdylib` because the artefact a page loads
+# is a `.wasm`, not an executable; `build.sh` next to it emits the directory to
+# serve. Declared rather than discovered so the `crate-type` can be set — Cargo
+# would otherwise build it as a binary.
+[[example]]
+name       = "web"
+path       = "examples/web/lib.rs"
+crate-type = ["cdylib"]
+
+# ── Features ──────────────────────────────────────────────────────────────────
+#
+# tui (default) — pulls in ratatui + crossterm for the terminal UI binary.
+#
+# Library consumers that don't need the TUI can opt out and avoid compiling
+# those dependencies:
+#
+#   [dependencies]
+#   poop = { version = "...", default-features = false }
+
+[features]
+default = ["tui"]
+tui     = ["dep:ratatui", "dep:crossterm"]
+
+# ── Core library dependencies ─────────────────────────────────────────────────
+
+[dependencies]
+# The `uuid` feature lets `protocol`'s `Uuid` constants be passed straight in,
+# with no conversion at the call sites.
+#
+# Must stay in lockstep with every other `webbluetooth` requirement in a
+# consuming graph. Cargo treats 0.0.x releases as mutually incompatible, so a
+# consumer pinned to a different 0.0.x than this crate resolves to *two* copies
+# of the crate — and `Bluetooth::shared()` memoises into a `OnceLock`, so two
+# copies means two BLE sessions and straps that will not connect.
+webbluetooth = { version = "0.0.3", features = ["uuid"] }
+# Only `sync`, because it is the one piece that is portable: `mpsc` is the event
+# channel handed to callers and `oneshot` carries a command reply back to the
+# request that is awaiting it, and neither needs a runtime underneath it. The
+# runtime and timer features are native-only (below), for the reason written up
+# at the top of `src/platform.rs`: tokio's timer is not implemented for
+# wasm32-unknown-unknown. `platform` routes spawning and timers per target, so
+# this is a dependency split rather than a hole in the API.
+tokio      = { version = "1", default-features = false, features = ["sync"] }
+# Deliberately no `v4`: every UUID in `protocol` is a `from_u128` constant, and
+# the random generator is the one thing that would force a randomness backend to
+# be configured on wasm.
+uuid       = { version = "1" }
+log        = "0.4"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow     = "1"
+
+# ── Native-only dependencies ──────────────────────────────────────────────────
+#
+# Split by target rather than by feature, so that a browser consumer gets the
+# right dependency set from `cargo build --target wasm32-unknown-unknown` with no
+# feature flags to remember. Everything here is reachable only from the two
+# binaries, both native by nature: one reads stdin and writes files, the other
+# draws a terminal.
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# `rt` backs `platform::spawn` and `time` backs `platform::{sleep, timeout}`;
+# `macros` covers `#[tokio::main]` and `select!` in the binaries, and
+# `rt-multi-thread` because that is the flavour `#[tokio::main]` defaults to.
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
+
+# Reads RUST_LOG and writes to stderr, for the binaries only. A browser gets its
+# logs through `log` and whatever the consumer installs as a drain.
+env_logger = "0.11"
+
+# TUI (feature = "tui", on by default). Gated by target as well as by feature:
+# crossterm has no wasm32-unknown-unknown backend, so without this the default
+# feature set alone would make the library unbuildable for the browser. Asking
+# for `tui` on wasm is now inert rather than a compile error.
+ratatui   = { version = "0.30.0", features = ["crossterm"], optional = true }
+crossterm = { version = "0.29", optional = true }
+
+# ── Browser-only dependencies ─────────────────────────────────────────────────
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# The two browser primitives `src/platform.rs` routes onto in place of a tokio
+# runtime: `exec::spawn`, which polls a task on the page's event loop, and the
+# `SET_TIMEOUT` operation, which is `setTimeout` reached over the same
+# request/settle path as every BLE call.
+#
+# Held at the same 0.0.3 `webbluetooth` itself depends on, for a sharper version
+# of the reason given further up: `exec` and `host` keep their task table and
+# their pending-request map in module-level state, so a second copy of this crate
+# would mean a second set of both — tasks spawned onto an executor that nothing
+# drives, and timers settled against tokens nobody is holding.
+webbluetooth-wasm = "0.0.3"

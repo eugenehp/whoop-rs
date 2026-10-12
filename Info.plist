@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App identity (required for the permission dialog) -->
+    <key>CFBundleName</key>
+    <string>poop</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.poop.app</string>
+
+    <key>CFBundleVersion</key>
+    <string>0.0.1</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>0.0.1</string>
+
+    <!--
+        Required on macOS 11+ for CoreBluetooth to be allowed to scan.
+        Without this key the OS silently blocks all BLE operations.
+    -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>poop needs Bluetooth access to discover and connect to WHOOP straps.</string>
+
+    <!--
+        Kept for compatibility with macOS 10.13–10.15 which used the older key.
+    -->
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>poop needs Bluetooth access to discover and connect to WHOOP straps.</string>
+</dict>
+</plist>
