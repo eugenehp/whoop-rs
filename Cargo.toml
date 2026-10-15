@@ -1,6 +1,6 @@
 [package]
 name          = "poop"
-version       = "0.0.1"
+version       = "0.0.2"
 edition       = "2021"
 # webbluetooth requires it, so this crate does too — declared rather than
 # discovered halfway through a build.
@@ -106,7 +106,7 @@ tui     = ["dep:ratatui", "dep:crossterm"]
 # consumer pinned to a different 0.0.x than this crate resolves to *two* copies
 # of the crate — and `Bluetooth::shared()` memoises into a `OnceLock`, so two
 # copies means two BLE sessions and straps that will not connect.
-webbluetooth = { version = "0.0.3", features = ["uuid"] }
+webbluetooth = { version = "0.0.4", features = ["uuid"] }
 # Only `sync`, because it is the one piece that is portable: `mpsc` is the event
 # channel handed to callers and `oneshot` carries a command reply back to the
 # request that is awaiting it, and neither needs a runtime underneath it. The
@@ -157,9 +157,9 @@ crossterm = { version = "0.29", optional = true }
 # `SET_TIMEOUT` operation, which is `setTimeout` reached over the same
 # request/settle path as every BLE call.
 #
-# Held at the same 0.0.3 `webbluetooth` itself depends on, for a sharper version
+# Held at the same 0.0.4 `webbluetooth` itself depends on, for a sharper version
 # of the reason given further up: `exec` and `host` keep their task table and
 # their pending-request map in module-level state, so a second copy of this crate
 # would mean a second set of both — tasks spawned onto an executor that nothing
 # drives, and timers settled against tokens nobody is holding.
-webbluetooth-wasm = "0.0.3"
+webbluetooth-wasm = "0.0.4"

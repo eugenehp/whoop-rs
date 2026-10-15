@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — noting
 that in the `0.0.x` range Cargo treats every release as incompatible with every
 other, so a patch bump here is not a compatible upgrade.
 
+## [0.0.2] — 2026-10-15
+
+### Changed
+
+- **`webbluetooth` 0.0.3 → 0.0.4**, and `webbluetooth-wasm` with it on the
+  browser target. No API changes were needed on this side. Because Cargo treats
+  every `0.0.x` as incompatible with every other, a consumer that also depends
+  on `webbluetooth` must move to `0.0.4` at the same time. Otherwise the graph
+  holds two copies, which means two BLE sessions and straps that will not
+  connect.
+
 ## [0.0.1] — 2026-10-12
 
 First release. Both generations, the full read surface, and a simulated strap so

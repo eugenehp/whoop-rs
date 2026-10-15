@@ -70,14 +70,14 @@ As a dependency:
 ```toml
 [dependencies]
 # Full build (includes the ratatui TUI feature):
-poop = "0.0.1"
+poop = "0.0.2"
 
 # Library only — skips ratatui / crossterm compilation:
-poop = { version = "0.0.1", default-features = false }
+poop = { version = "0.0.2", default-features = false }
 ```
 
 While the version is `0.0.x`, Cargo treats every release as incompatible with
-every other, so that requirement pins exactly `0.0.1` rather than accepting a
+every other, so that requirement pins exactly `0.0.2` rather than accepting a
 later patch. The same applies to `webbluetooth`, and it matters there: two
 copies of it in one dependency graph means two BLE sessions and straps that
 will not connect. Keep every `webbluetooth` requirement in a consuming graph on
